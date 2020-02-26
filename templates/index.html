@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+    integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+    crossorigin=""/>
+     <!-- Make sure you put this AFTER Leaflet's CSS -->
+     <style>#mapid { height: 480px; } #Destination, #Origin{height: 24px; width: 300px; font-size: 18px; margin-bottom: 10px;}
+     #predict{height: 30px; width: 150px; font-size: 20px; margin-bottom: 10px;}
+     .predictionPrice{margin: 5px auto;font-size: 30px; background-color: rgba(249, 179, 0, .8); padding: 5px 10px; border-radius: 15px;text-align: center;}</style>
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>    
+ <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+ integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+ crossorigin=""></script>
+    <title>Document</title>
+</head>
+<body>
+        <h1 style="text-align:center;">Taxi Fare Calculator</h1>
+        <h3 style="text-align:center;">Enter your a location/coordinate origin and destination:</h3>
+    <form style="display: flex; justify-content: center;" action="/predict" method="post">
+        <div style = "display: flex; flex-direction: column;">
+            <div>
+                <!--<label for="Origin">From:</label>-->
+                <input id="Origin" type="text" name="Origin" placeholder="From">
+            </div>
+            <div>
+                <!--<label for="Destination">Destination:</label>-->
+                <input id="Destination" type="text" name="Destination" placeholder="Destination">
+            </div>
+            <div style="align-self: center;">
+                <button id="predict" type="submit">Predict Fare</button>
+            </div>  
+            <div style="margin: 5px auto;" id="predictionPrice">
+
+            </div>        
+        </form>
+        </div>
+        
+    <div id="fare"></div>
+    <div id="mapid"></div>
+    <script>
+    var somedata;
+    var mymap = L.map('mapid').setView([39.774769, -101.601562], 4);
+    L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+    maxZoom: 18,
+    id: 'mapbox.streets',
+    accessToken: '{{ leaflet }}'
+}).addTo(mymap);
+function onMapClick(e) {
+    alert("You clicked the map at " + e.latlng);
+    console.log(e.latlng['lat']);
+    var markers = mymap['_layers'];
+    var markerCount = Object.keys(mymap['_layers']).length;
+    console.log(markerCount);
+    var origin = document.querySelector('#Origin');
+    var destination = document.querySelector('#Destination');
+    if (markerCount > 2){
+        markers[Object.keys(mymap['_layers'])[1]].remove();
+        if (origin.value === ""){
+            origin.value = e.latlng['lat'] + ', ' + e.latlng['lng'];
+        }
+        else{
+            origin.value = destination.value;
+            destination.value = e.latlng['lat'] + ', ' + e.latlng['lng'];
+        }
+        
+    }
+    else{
+        if (origin.value === ""){
+        origin.value = e.latlng['lat'] + ', ' + e.latlng['lng'];
+    }
+        else{
+            destination.value = e.latlng['lat'] + ', ' + e.latlng['lng'];
+        }
+    }
+    
+    
+    //make calls to populate the map with markers
+    var marker = L.marker(e.latlng).addTo(mymap);
+    //populate the search fields
+
+}
+
+mymap.on('click', onMapClick);
+
+document.querySelector('#predict').addEventListener('click', function(e){
+    e.preventDefault();
+    var origin = document.querySelector('#Origin');
+    var destination = document.querySelector('#Destination');
+    var dataValues = {'origin':origin.value, 'destination':destination.value}
+    //var dataValues = [origin.value, destination.value]
+    //console.log('datavalues:' + dataValues['origin'])
+    //console.log(dataValues['destination'])
+
+    $.ajax({
+      type: "POST",
+      url: "/predict",
+      //data: dataValues,
+      data: $('form').serialize(),
+      dataType: "text",
+      success: function(resultData){
+          somedata = resultData
+          resultData = JSON.parse(resultData)
+          console.log(resultData)
+          
+          resultData
+          document.querySelector('#predictionPrice').innerHTML = '$' + parseFloat(resultData['fare']).toFixed(2) + '<br />' + parseFloat(resultData['distance']) + ' miles<br />' + (parseFloat(resultData['duration'])/60).toFixed(2) + ' minutes';
+          //document.querySelector('#predictionPrice').innerHTML = '$' + parseFloat(resultData['fare']).toFixed(2)
+          document.querySelector('#predictionPrice').className = 'predictionPrice';
+      }
+    });
+
+})
+
+    </script>
+</body>
+</html>
